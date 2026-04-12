@@ -47,7 +47,22 @@ browser_html() {
 # Take screenshot (Base64)
 browser_screenshot() {
     local output="${1:-screenshot.png}"
-    curl -s "$BASE_URL/screenshot" | jq -r '.screenshot' | base64 -d > "$output"
+    local response
+    response=$(curl -s "$BASE_URL/screenshot")
+    local screenshot
+    screenshot=$(echo "$response" | jq -r '.screenshot // empty')
+    if [ -z "$screenshot" ] || [ "$screenshot" = "null" ]; then
+        echo "Screenshot failed: $(echo "$response" | jq -r '.error // "unknown error"')" >&2
+        return 1
+    fi
+    echo "$screenshot" | base64 -d > "$output"
+    local size
+    size=$(wc -c < "$output")
+    if [ "$size" -lt 100 ]; then
+        echo "Screenshot failed: file too small (${size} bytes), WebView may not be ready" >&2
+        rm -f "$output"
+        return 1
+    fi
     echo "Screenshot saved to $output"
 }
 
