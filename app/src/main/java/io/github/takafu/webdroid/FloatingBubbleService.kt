@@ -593,7 +593,7 @@ class FloatingBubbleService : Service() {
                         .scaleX(0f)
                         .scaleY(0f)
                         .setDuration(100)
-                        .withEndAction { stopSelf() }
+                        .withEndAction { stopAllServices() }
                         .start()
                 }
                 override fun onAnimationCancel(a: android.animation.Animator) {}
@@ -672,6 +672,11 @@ class FloatingBubbleService : Service() {
             })
             start()
         }
+    }
+
+    private fun stopAllServices() {
+        stopService(Intent(this, AutomationService::class.java))
+        stopSelf()
     }
 
     // Hide all overlays and show restore notification
@@ -1644,7 +1649,7 @@ class FloatingBubbleService : Service() {
             setContentTitle("Browser Hidden")
             setContentText("Tap to restore browser window")
             setContentIntent(pendingIntent)
-            setAutoCancel(true)
+            setDeleteIntent(pendingIntent)  // swipe = restore (same as tap)
         }.build()
 
         notificationManager.notify(RESTORE_NOTIFICATION_ID, notification)
@@ -1784,23 +1789,22 @@ class FloatingBubbleService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Remove hidden container
-        hiddenWebViewContainer?.let {
-            it.removeAllViews()
-            windowManager.removeView(it)
-        }
+        try { hiddenWebViewContainer?.let { it.removeAllViews(); windowManager.removeView(it) } } catch (e: Exception) {}
         hiddenWebViewContainer = null
-
-        floatingWindow?.let {
-            (it as? LinearLayout)?.let { layout ->
-                (layout.getChildAt(1) as? FrameLayout)?.removeAllViews()
+        try {
+            floatingWindow?.let {
+                (it as? LinearLayout)?.let { layout ->
+                    (layout.getChildAt(1) as? FrameLayout)?.removeAllViews()
+                }
+                windowManager.removeView(it)
             }
-            windowManager.removeView(it)
-        }
-        bubbleView?.let { windowManager.removeView(it) }
-        trashView?.let { windowManager.removeView(it) }
-        stashView?.let { windowManager.removeView(it) }
+        } catch (e: Exception) {}
+        try { bubbleView?.let { windowManager.removeView(it) } } catch (e: Exception) {}
+        try { trashView?.let { windowManager.removeView(it) } } catch (e: Exception) {}
+        try { stashView?.let { windowManager.removeView(it) } } catch (e: Exception) {}
         BrowserActivity.webView?.destroy()
         BrowserActivity.webView = null
+        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+            .cancel(RESTORE_NOTIFICATION_ID)
     }
 }

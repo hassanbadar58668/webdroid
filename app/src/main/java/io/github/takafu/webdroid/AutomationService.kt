@@ -21,6 +21,7 @@ class AutomationService : Service() {
     companion object {
         private const val TAG = "AutomationService"
         private const val PORT = 8765
+        private const val ACTION_STOP_SERVICES = "io.github.takafu.webdroid.STOP_SERVICES"
         private var server: AutomationServer? = null
         private val gson = Gson()
 
@@ -56,6 +57,10 @@ class AutomationService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP_SERVICES) {
+            stopService(Intent(this, FloatingBubbleService::class.java))
+            stopSelf()
+        }
         return START_STICKY
     }
 
@@ -74,17 +79,28 @@ class AutomationService : Service() {
     }
 
     private fun createNotification(): Notification {
+        val stopIntent = Intent(this, AutomationService::class.java).apply {
+            action = ACTION_STOP_SERVICES
+        }
+        val stopPendingIntent = android.app.PendingIntent.getService(
+            this, 0, stopIntent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, "browser_automation")
                 .setContentTitle("Browser Automation")
                 .setContentText("HTTP Server running on port $PORT")
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setDeleteIntent(stopPendingIntent)  // swipe = stop services
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopPendingIntent)
                 .build()
         } else {
             Notification.Builder(this)
                 .setContentTitle("Browser Automation")
                 .setContentText("HTTP Server running on port $PORT")
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setDeleteIntent(stopPendingIntent)  // swipe = stop services
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopPendingIntent)
                 .build()
         }
     }
