@@ -17,11 +17,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       
-      - name: Build with Gradle (no wrapper)
+      - name: Build with Gradle
         run: |
-          # تثبيت Gradle مباشرة
-          sudo apt-get update
-          sudo apt-get install gradle -y
+          # تثبيت Gradle يدوياً
+          wget https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip gradle-8.5-bin.zip
+          export PATH=$PATH:$PWD/gradle-8.5/bin
           gradle assembleDebug
       
       - name: Upload APK
